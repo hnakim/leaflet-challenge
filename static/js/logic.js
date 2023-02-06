@@ -16,12 +16,18 @@ var myMap = L.map("map", {
 //retrieve geoJSON data
 d3.json(url).then(function (data) {
 
-    //loop through response to return earthquake location, radius (to calculate magnitude), and depth ("3rd coordinate")
-    for (var i = 0; i < data.features.length; i++) {
-        let earthquake = data.features[i].geometry.coordinates;
-        let location = [earthquake[1], earthquake[0]];
-        let depth = earthquake[2];
-        let magnitude = data.features[i].properties.mag
+      //create function to return earthquake data to create markers for magnitude
+      function markerStyle(feature) {
+        return {
+          opacity: 1,
+          fillOpacity: 1,
+          fillColor: color(feature.geometry.coordinates[2]),
+          color: "#000000",
+          radius: radius(feature.properties.mag),
+          stroke: true,
+          weight: 0.5
+        };
+      }
 
       //determine radius of earthquake map marker based off magnitude
       function radius(magnitude) {
@@ -45,16 +51,21 @@ d3.json(url).then(function (data) {
       }
       
     //create a geoJSON layer that contains the features
-    L.circle(location, {
-        color: 'black',
-        fillColor: color(depth),
-        fillOpacity: 0.8,
-        radius: radius(magnitude),
-        weight: 0.5})
-        .bindPopup(`<h3>Location: ${data.features[i].properties.place}</h3> <hr> <h3>Magnitude: ${magnitude}</h3> <hr> <h3>Date & Time: ${new Date(data.features[i].properties.time)}</h3>`)
-        .addTo(myMap);
-    };
-    
+    L.geoJson(data, {
+      pointToLayer: function (feature, latlng) {
+        return L.circleMarker(latlng);
+      },
+      //set the style for each circleMarker using function created
+      style: markerStyle,
+  
+      onEachFeature: function (feature, layer) {
+        layer.bindPopup(
+          "Magnitude: " + feature.properties.mag + "<br>Depth: " + feature.geometry.coordinates[2] + "<br>Location: " + feature.properties.place
+        );
+      }
+  
+    }).addTo(myMap);
+  
     //create legend and add details
     var legend = L.control({
         position: "bottomright"
@@ -63,9 +74,10 @@ d3.json(url).then(function (data) {
     legend.onAdd = function() {
         var div = L.DomUtil.create("div", "info legend");
         var grades = [-10, 10, 20, 30, 40, 50];
-        var colors = ["#ea2c2c","#eaa92c","#d5ea2c","#92ea2c","#2ceabf","#2c99ea"]
+        var colors = ["#2c99ea","#2ceabf","#92ea2c","#eaa92c","#d5ea2c","#ea2c2c"]
     
         // loop through intervals to add info to label
+        //revisit this part
         for (var i = 0; i<grades.length; i++) {
             div.innerHTML += "<i style='background: " + colors[i] + "'></i> " + grades[i] + (grades[i + 1] ? "&ndash;" + grades[i + 1] + "<br>" : "+");
         }
